@@ -18,17 +18,6 @@ struct ScanTab: View {
     ARViewContainer()
       .edgesIgnoringSafeArea(.all)
 
-    /*VStack(spacing: 20){
-     Image(systemName: "exclamationmark.triangle")
-     .resizable()
-     .frame(width: 100, height: 100)
-     Text("Scan tab under development!")
-     .font(.system(size: 20))
-     .fontWeight(.semibold)
-     }
-    
-     }
-     }*/
   }
 }
 

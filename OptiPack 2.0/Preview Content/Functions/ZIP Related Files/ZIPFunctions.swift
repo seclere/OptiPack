@@ -90,7 +90,8 @@ struct ZIPLoaders {
 
   func uploadPointCloud(fileURL: URL) {
     let base = UserDefaults.standard.string(forKey: "serverURL") ?? ""
-    let meshingPath = UserDefaults.standard.string(forKey: "packingPath") ?? "/packing"
+    let meshingPath = UserDefaults.standard.string(forKey: "meshingPath") ?? "/meshing"
+    let packingPath = UserDefaults.standard.string(forKey: "packingPath") ?? "/packing"
 
     let fullMeshingURLString =
       base.hasSuffix("/") || meshingPath.hasPrefix("/")

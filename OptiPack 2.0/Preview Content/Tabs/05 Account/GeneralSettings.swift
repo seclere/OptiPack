@@ -6,7 +6,7 @@ struct GeneralSettings: View {
     "https://1048-175-176-27-8.ngrok-free.app"
   @AppStorage("detectionPath") private var detectionPath: String = "/detect"
   @AppStorage("meshingPath") private var meshingPath: String = "/meshing"
-  @AppStorage("productionPath") private var productionPath: String = "/production"
+  @AppStorage("packingPath") private var packingPath: String = "/packing"
   @AppStorage("imageDetectionURL") private var imageDetectionURL: String =
     "https://1048-175-176-27-8.ngrok-free.app"
 

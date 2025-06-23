@@ -341,37 +341,6 @@ struct MatchingPopupView: View {
       JSONStateModel.buildJSONCandidatesFromDownloads()
     }
   }
-
-  func getObjectPLYFilesFromDocuments() -> [URL] {
-    let fileManager = FileManager.default
-    guard let docsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-      return []
-    }
-
-    do {
-      let fileURLs = try fileManager.contentsOfDirectory(
-        at: docsURL, includingPropertiesForKeys: nil)
-      return fileURLs.filter {
-        $0.lastPathComponent.hasPrefix("object_") && $0.pathExtension == "ply"
-      }
-    } catch {
-      print("Failed to list documents folder: \(error)")
-      return []
-    }
-  }
-
-  func loadPLYPreviewNode(from url: URL) throws -> SCNNode {
-    let isBinary = try PLYLoader.isPLYBinary(at: url)
-
-    if isBinary {
-      return try PLYLoader.loadBinaryPLY(from: url)
-    } else {
-      let geometry = try PLYLoader.loadPLYAsGeometry(from: url)
-      let node = SCNNode(geometry: geometry)
-      node.position = SCNVector3(0, 0, 0)
-      return node
-    }
-  }
 }
 
 struct JSONCandidate: Identifiable, Hashable {
