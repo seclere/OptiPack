@@ -25,62 +25,62 @@ import os
 
 final class Renderer {
   // Maximum number of points we store in the point cloud
-  private let maxPoints = 100_000_00
+  let maxPoints = 100_000_00
   // Number of sample points on the grid
-  private let numGridPoints = 500
+  let numGridPoints = 500
   // Particle's size in pixels
-  private let particleSize: Float = 10
+  let particleSize: Float = 10
   // We only use landscape orientation in this app
-  private let orientation = UIInterfaceOrientation.landscapeRight
+  let orientation = UIInterfaceOrientation.landscapeRight
   // Camera's threshold values for detecting when the camera moves so that we can accumulate the points
-  private let cameraRotationThreshold = cos(2 * .degreesToRadian)
-  private let cameraTranslationThreshold: Float = pow(0.02, 2)  // (meter-squared)
+  let cameraRotationThreshold = cos(2 * .degreesToRadian)
+  let cameraTranslationThreshold: Float = pow(0.02, 2)  // (meter-squared)
   // The max number of command buffers in flight
-  private let maxInFlightBuffers = 3
+  let maxInFlightBuffers = 3
 
-  private lazy var rotateToARCamera = Self.makeRotateToARCameraMatrix(orientation: orientation)
-  private let session: ARSession
+  lazy var rotateToARCamera = Self.makeRotateToARCameraMatrix(orientation: orientation)
+  let session: ARSession
 
   // Metal objects and textures
-  private let device: MTLDevice
-  private let library: MTLLibrary
-  private let renderDestination: RenderDestinationProvider
-  private let relaxedStencilState: MTLDepthStencilState
-  private let depthStencilState: MTLDepthStencilState
-  private let commandQueue: MTLCommandQueue
-  private lazy var unprojectPipelineState = makeUnprojectionPipelineState()!
-  private lazy var rgbPipelineState = makeRGBPipelineState()!
-  private lazy var particlePipelineState = makeParticlePipelineState()!
+  let device: MTLDevice
+  let library: MTLLibrary
+  let renderDestination: RenderDestinationProvider
+  let relaxedStencilState: MTLDepthStencilState
+  let depthStencilState: MTLDepthStencilState
+  let commandQueue: MTLCommandQueue
+  lazy var unprojectPipelineState = makeUnprojectionPipelineState()!
+  lazy var rgbPipelineState = makeRGBPipelineState()!
+  lazy var particlePipelineState = makeParticlePipelineState()!
   // texture cache for captured image
-  private lazy var textureCache = makeTextureCache()
-  private var capturedImageTextureY: CVMetalTexture?
-  private var capturedImageTextureCbCr: CVMetalTexture?
-  private var depthTexture: CVMetalTexture?
-  private var confidenceTexture: CVMetalTexture?
+  lazy var textureCache = makeTextureCache()
+  var capturedImageTextureY: CVMetalTexture?
+  var capturedImageTextureCbCr: CVMetalTexture?
+  var depthTexture: CVMetalTexture?
+  var confidenceTexture: CVMetalTexture?
 
   // Multi-buffer rendering pipeline
-  private let inFlightSemaphore: DispatchSemaphore
-  private var currentBufferIndex = 0
+  let inFlightSemaphore: DispatchSemaphore
+  var currentBufferIndex = 0
 
   // The current viewport size
-  private var viewportSize = CGSize()
+  var viewportSize = CGSize()
   // The grid of sample points
-  private lazy var gridPointsBuffer = MetalBuffer<Float2>(
+  lazy var gridPointsBuffer = MetalBuffer<Float2>(
     device: device,
     array: makeGridPoints(),
     index: kGridPoints.rawValue, options: [])
 
   // RGB buffer
-  private lazy var rgbUniforms: RGBUniforms = {
+  lazy var rgbUniforms: RGBUniforms = {
     var uniforms = RGBUniforms()
     uniforms.radius = rgbRadius
     uniforms.viewToCamera.copy(from: viewToCamera)
     uniforms.viewRatio = Float(viewportSize.width / viewportSize.height)
     return uniforms
   }()
-  private var rgbUniformsBuffers = [MetalBuffer<RGBUniforms>]()
+  var rgbUniformsBuffers = [MetalBuffer<RGBUniforms>]()
   // Point Cloud buffer
-  private lazy var pointCloudUniforms: PointCloudUniforms = {
+  lazy var pointCloudUniforms: PointCloudUniforms = {
     var uniforms = PointCloudUniforms()
     uniforms.maxPoints = Int32(maxPoints)
     uniforms.confidenceThreshold = Int32(confidenceThreshold)
@@ -88,21 +88,21 @@ final class Renderer {
     uniforms.cameraResolution = cameraResolution
     return uniforms
   }()
-  private var pointCloudUniformsBuffers = [MetalBuffer<PointCloudUniforms>]()
+  var pointCloudUniformsBuffers = [MetalBuffer<PointCloudUniforms>]()
   // Particles buffer
-  private var particlesBuffer: MetalBuffer<ParticleUniforms>
-  private var currentPointIndex = 0
-  private var currentPointCount = 0
+  var particlesBuffer: MetalBuffer<ParticleUniforms>
+  var currentPointIndex = 0
+  var currentPointCount = 0
 
   // Camera data
-  private var sampleFrame: ARFrame { session.currentFrame! }
-  private lazy var cameraResolution = Float2(
+  var sampleFrame: ARFrame { session.currentFrame! }
+  lazy var cameraResolution = Float2(
     Float(sampleFrame.camera.imageResolution.width),
     Float(sampleFrame.camera.imageResolution.height))
-  private lazy var viewToCamera = sampleFrame.displayTransform(
+  lazy var viewToCamera = sampleFrame.displayTransform(
     for: orientation, viewportSize: viewportSize
   ).inverted()
-  private lazy var lastCameraTransform = sampleFrame.camera.transform
+  lazy var lastCameraTransform = sampleFrame.camera.transform
 
   var isScanning: Bool = false
   var showCameraFeed = true
@@ -159,7 +159,7 @@ final class Renderer {
     viewportSize = size
   }
 
-  private func updateCapturedImageTextures(frame: ARFrame) {
+  func updateCapturedImageTextures(frame: ARFrame) {
     // Create two textures (Y and CbCr) from the provided frame's captured image
     let pixelBuffer = frame.capturedImage
     guard CVPixelBufferGetPlaneCount(pixelBuffer) >= 2 else {
@@ -172,7 +172,7 @@ final class Renderer {
       fromPixelBuffer: pixelBuffer, pixelFormat: .rg8Unorm, planeIndex: 1)
   }
 
-  private func updateDepthTextures(frame: ARFrame) -> Bool {
+  func updateDepthTextures(frame: ARFrame) -> Bool {
 
     guard isScanning else { return false }
 
@@ -189,7 +189,7 @@ final class Renderer {
     return true
   }
 
-  private func update(frame: ARFrame) {
+  func update(frame: ARFrame) {
     // frame dependent info
     let camera = frame.camera
     let cameraIntrinsicsInversed = camera.intrinsics.inverse
@@ -266,44 +266,12 @@ final class Renderer {
     commandBuffer.commit()
   }
 
-  private func shouldAccumulate(frame: ARFrame) -> Bool {
+  func shouldAccumulate(frame: ARFrame) -> Bool {
     let cameraTransform = frame.camera.transform
     return currentPointCount == 0
       || dot(cameraTransform.columns.2, lastCameraTransform.columns.2) <= cameraRotationThreshold
       || distance_squared(cameraTransform.columns.3, lastCameraTransform.columns.3)
         >= cameraTranslationThreshold
-  }
-
-  private func accumulatePoints(
-    frame: ARFrame, commandBuffer: MTLCommandBuffer, renderEncoder: MTLRenderCommandEncoder
-  ) {
-    pointCloudUniforms.pointCloudCurrentIndex = Int32(currentPointIndex)
-
-    var retainingTextures = [
-      capturedImageTextureY, capturedImageTextureCbCr, depthTexture, confidenceTexture,
-    ]
-    commandBuffer.addCompletedHandler { buffer in
-      retainingTextures.removeAll()
-    }
-
-    renderEncoder.setDepthStencilState(relaxedStencilState)
-    renderEncoder.setRenderPipelineState(unprojectPipelineState)
-    renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
-    renderEncoder.setVertexBuffer(particlesBuffer)
-    renderEncoder.setVertexBuffer(gridPointsBuffer)
-    renderEncoder.setVertexTexture(
-      CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
-    renderEncoder.setVertexTexture(
-      CVMetalTextureGetTexture(capturedImageTextureCbCr!), index: Int(kTextureCbCr.rawValue))
-    renderEncoder.setVertexTexture(
-      CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
-    renderEncoder.setVertexTexture(
-      CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
-    renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
-
-    currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
-    currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
-    lastCameraTransform = frame.camera.transform
   }
 
   func resetScanning() {
@@ -329,73 +297,6 @@ final class Renderer {
 
     print("Scanning reset")
   }
-
-  func clearOldPointCloudFiles() {
-    let fileManager = FileManager.default
-    let docsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-
-    if let fileURLs = try? fileManager.contentsOfDirectory(
-      at: docsURL, includingPropertiesForKeys: nil)
-    {
-      for fileURL in fileURLs {
-        let ext = fileURL.pathExtension.lowercased()
-        if ext == "ply" || ext == "zip" {
-          do {
-            try fileManager.removeItem(at: fileURL)
-            print("Deleted old file: \(fileURL.lastPathComponent)")
-          } catch {
-            print("Failed to delete \(fileURL.lastPathComponent): \(error)")
-          }
-        }
-      }
-    }
-  }
-
-  func sharePointCloud() {
-
-    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-    let documentsDirectory = paths[0]
-
-    guard
-      let fileURLs = try? FileManager.default.contentsOfDirectory(
-        at: documentsDirectory, includingPropertiesForKeys: nil),
-      let latestFile =
-        fileURLs
-        .filter({ $0.pathExtension == "ply" })
-        .sorted(by: { $0.lastPathComponent > $1.lastPathComponent })
-        .first
-    else {
-      print("No PLY file found")
-      return
-    }
-
-    do {
-      let zipFileURL = try ZipHelper.zipPLYFile(at: latestFile, in: documentsDirectory)
-      print("Zipped file created at: \(zipFileURL.path)")
-
-      let activityViewController = UIActivityViewController(
-        activityItems: [zipFileURL], applicationActivities: nil)
-      if let rootVC = UIApplication.shared.windows.first?.rootViewController {
-        rootVC.present(activityViewController, animated: true)
-      }
-
-      ZIPLoader.uploadPointCloud(fileURL: zipFileURL)
-
-      activityViewController.completionWithItemsHandler = { _, completed, _, _ in
-        if completed {
-          try? FileManager.default.removeItem(at: zipFileURL)
-          print("Deleted ZIP file after sharing: \(zipFileURL.lastPathComponent)")
-        }
-      }
-
-    } catch {
-      print("Error while zipping and sharing file: \(error)")
-    }
-  }
-
-  public func exportMesh() {
-
-  }
 }
 
 // MARK: - Scanning Control
@@ -420,101 +321,6 @@ func clearPoints() {
 // MARK: - Metal Helpers
 
 extension Renderer {
-  func makeUnprojectionPipelineState() -> MTLRenderPipelineState? {
-    guard let vertexFunction = library.makeFunction(name: "unprojectVertex") else {
-      return nil
-    }
-
-    let descriptor = MTLRenderPipelineDescriptor()
-    descriptor.vertexFunction = vertexFunction
-    descriptor.isRasterizationEnabled = false
-    descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-    descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-
-    return try? device.makeRenderPipelineState(descriptor: descriptor)
-  }
-
-  func makeRGBPipelineState() -> MTLRenderPipelineState? {
-    guard let vertexFunction = library.makeFunction(name: "rgbVertex"),
-      let fragmentFunction = library.makeFunction(name: "rgbFragment")
-    else {
-      return nil
-    }
-
-    let descriptor = MTLRenderPipelineDescriptor()
-    descriptor.vertexFunction = vertexFunction
-    descriptor.fragmentFunction = fragmentFunction
-    descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-    descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-
-    return try? device.makeRenderPipelineState(descriptor: descriptor)
-  }
-
-  func makeParticlePipelineState() -> MTLRenderPipelineState? {
-    guard let vertexFunction = library.makeFunction(name: "particleVertex"),
-      let fragmentFunction = library.makeFunction(name: "particleFragment")
-    else {
-      return nil
-    }
-
-    let descriptor = MTLRenderPipelineDescriptor()
-    descriptor.vertexFunction = vertexFunction
-    descriptor.fragmentFunction = fragmentFunction
-    descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-    descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
-    descriptor.colorAttachments[0].isBlendingEnabled = true
-    descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-    descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-    descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
-
-    return try? device.makeRenderPipelineState(descriptor: descriptor)
-  }
-
-  /// Makes sample points on camera image, also precompute the anchor point for animation
-  func makeGridPoints() -> [Float2] {
-    let gridArea = cameraResolution.x * cameraResolution.y
-    let spacing = sqrt(gridArea / Float(numGridPoints))
-    let deltaX = Int(round(cameraResolution.x / spacing))
-    let deltaY = Int(round(cameraResolution.y / spacing))
-
-    var points = [Float2]()
-    for gridY in 0..<deltaY {
-      let alternatingOffsetX = Float(gridY % 2) * spacing / 2
-      for gridX in 0..<deltaX {
-        let cameraPoint = Float2(
-          alternatingOffsetX + (Float(gridX) + 0.5) * spacing, (Float(gridY) + 0.5) * spacing)
-
-        points.append(cameraPoint)
-      }
-    }
-
-    return points
-  }
-
-  func makeTextureCache() -> CVMetalTextureCache {
-    // Create captured image texture cache
-    var cache: CVMetalTextureCache!
-    CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
-
-    return cache
-  }
-
-  func makeTexture(
-    fromPixelBuffer pixelBuffer: CVPixelBuffer, pixelFormat: MTLPixelFormat, planeIndex: Int
-  ) -> CVMetalTexture? {
-    let width = CVPixelBufferGetWidthOfPlane(pixelBuffer, planeIndex)
-    let height = CVPixelBufferGetHeightOfPlane(pixelBuffer, planeIndex)
-
-    var texture: CVMetalTexture? = nil
-    let status = CVMetalTextureCacheCreateTextureFromImage(
-      nil, textureCache, pixelBuffer, nil, pixelFormat, width, height, planeIndex, &texture)
-
-    if status != kCVReturnSuccess {
-      texture = nil
-    }
-
-    return texture
-  }
 
   static func cameraToDisplayRotation(orientation: UIInterfaceOrientation) -> Int {
     switch orientation {
@@ -539,70 +345,6 @@ extension Renderer {
 
     let rotationAngle = Float(cameraToDisplayRotation(orientation: orientation)) * .degreesToRadian
     return flipYZ * matrix_float4x4(simd_quaternion(rotationAngle, Float3(0, 0, 1)))
-  }
-
-  public func savePointsToFile() {
-
-    // 1
-    var fileToWrite = ""
-    let headers = [
-      "ply", "format ascii 1.0", "element vertex \(currentPointCount)", "property float x",
-      "property float y", "property float z", "property uchar red", "property uchar green",
-      "property uchar blue", "property uchar alpha", "element face 0",
-      "property list uchar int vertex_indices", "end_header",
-    ]
-    for header in headers {
-      fileToWrite += header
-      fileToWrite += "\r\n"
-    }
-
-    // 2
-    for i in 0..<currentPointCount {
-
-      // 3
-      let point = particlesBuffer[i]
-      let colors = point.color
-
-      // 4
-      let red = Int(colors.x * 255.0).clamped(to: 0...255)
-      let green = Int(colors.y * 255.0).clamped(to: 0...255)
-      let blue = Int(colors.z * 255.0).clamped(to: 0...255)
-
-      // 5
-      let pvValue =
-        "\(point.position.x) \(point.position.y) \(point.position.z) \(Int(red)) \(Int(green)) \(Int(blue)) 255"
-      fileToWrite += pvValue
-      fileToWrite += "\r\n"
-    }
-    // 6
-    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-    let documentsDirectory = paths[0]
-    let filename = "ply_\(UUID().uuidString).ply"
-    let file = documentsDirectory.appendingPathComponent(filename)
-    do {
-      // 7
-      try fileToWrite.write(to: file, atomically: true, encoding: String.Encoding.ascii)
-      sharePointCloud()
-      var pendingFiles = UserDefaults.standard.stringArray(forKey: "pendingPLYs") ?? []
-      pendingFiles.append(filename)
-      UserDefaults.standard.set(pendingFiles, forKey: "pendingPLYs")
-      DispatchQueue.global().asyncAfter(deadline: .now() + 30.0) {
-        do {
-          try FileManager.default.removeItem(at: file)
-          print("File deleted after sharing: \(file.path)")
-        } catch {
-          print("Failed to delete PLY file", error)
-        }
-      }
-    } catch {
-      print("Failed to write PLY file", error)
-    }
-    DispatchQueue.global().asyncAfter(deadline: .now() + 120.0) {
-      do {
-        self.clearOldPointCloudFiles()
-      }
-    }
-
   }
 
   func currentCameraImage() -> UIImage? {
