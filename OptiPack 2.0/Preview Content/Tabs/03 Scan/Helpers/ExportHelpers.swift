@@ -8,6 +8,7 @@ import Foundation
 import UIKit
 
 extension Renderer {
+
   public func savePointsToFile() {
 
     var fileToWrite = ""
@@ -42,7 +43,7 @@ extension Renderer {
     let file = documentsDirectory.appendingPathComponent(filename)
     do {
       try fileToWrite.write(to: file, atomically: true, encoding: String.Encoding.ascii)
-      sharePointCloud()
+      sharePointCloud(notificationManager: NotificationManager.shared)
       var pendingFiles = UserDefaults.standard.stringArray(forKey: "pendingPLYs") ?? []
       pendingFiles.append(filename)
       UserDefaults.standard.set(pendingFiles, forKey: "pendingPLYs")
@@ -65,7 +66,7 @@ extension Renderer {
 
   }
 
-  func sharePointCloud() {
+  func sharePointCloud(notificationManager: NotificationManager) {
 
     let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
     let documentsDirectory = paths[0]
@@ -93,7 +94,8 @@ extension Renderer {
         rootVC.present(activityViewController, animated: true)
       }
 
-      ZIPLoader.uploadPointCloud(fileURL: zipFileURL)
+      ZIPLoader.uploadPointCloud(
+        fileURL: zipFileURL, notificationManager: NotificationManager.shared)
 
       activityViewController.completionWithItemsHandler = { _, completed, _, _ in
         if completed {

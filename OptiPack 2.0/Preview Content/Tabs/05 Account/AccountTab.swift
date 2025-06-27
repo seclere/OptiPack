@@ -8,6 +8,8 @@ import SwiftUI
 
 struct AccountTab: View {
 
+  @EnvironmentObject var notificationManager: NotificationManager
+
   @AppStorage("loggedInUserID") private var loggedInUserID: String?
   @State private var showLogoutConfirmation = false
   @State private var showDeleteConfirmation = false

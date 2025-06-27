@@ -14,8 +14,10 @@ import UniformTypeIdentifiers
 
 struct ItemTab: View {
   @EnvironmentObject var authManager: AuthManager
+  @EnvironmentObject var notificationManager: NotificationManager
   @StateObject private var keyboardObserver = KeyboardObserver()
   @Environment(\.modelContext) private var context
+
   @Query private var users: [UserCredentials]
 
   @State private var searchText = ""

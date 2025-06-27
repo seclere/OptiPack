@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeTab: View {
   @EnvironmentObject var authManager: AuthManager
+  @EnvironmentObject var notificationManager: NotificationManager
 
   @State private var showCreateInventory = false
   @StateObject private var keyboardObserver = KeyboardObserver()

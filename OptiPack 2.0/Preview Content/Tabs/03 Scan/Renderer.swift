@@ -19,11 +19,13 @@ import Foundation
 import MachO  // Add if needed
 import Metal
 import MetalKit
+import SwiftUICore
 import UIKit
 import ZIPFoundation
 import os
 
 final class Renderer {
+
   // Maximum number of points we store in the point cloud
   let maxPoints = 100_000_00
   // Number of sample points on the grid
@@ -123,6 +125,7 @@ final class Renderer {
   }
 
   let ZIPLoader = ZIPLoaders()
+  @EnvironmentObject var notificationManager: NotificationManager
 
   init(
     session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider

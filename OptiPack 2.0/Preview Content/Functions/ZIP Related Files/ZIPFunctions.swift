@@ -83,6 +83,12 @@ struct ZIPLoaders {
       try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
       try FileManager.default.unzipItem(at: zipURL, to: destinationURL)
       print("✅ Successfully unzipped to: \(destinationURL.path)")
+
+      // ✅ Move to ItemTab
+      DispatchQueue.main.async {
+        UserDefaults.standard.set("items", forKey: "selectedTab")
+      }
+
     } catch {
       print("❌ Unzipping failed: \(error)")
     }
@@ -128,48 +134,90 @@ struct ZIPLoaders {
     body.append(fileData)
     body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
-    let task = URLSession.shared.uploadTask(with: request, from: body) {
-      responseData, response, error in
-      if let error = error {
-        print("❌ Upload error: \(error)")
-        return
-      }
+    let task = URLSession.shared.uploadTask(
+      with: request, from: body,
+      completionHandler: { responseData, response, error in
+        let mainWork = {
+          if let error = error {
+            print("❌ Upload error: \(error)")
+            NotificationManager.shared.show(
+              AppNotification(
+                message: "✅ Upload & extraction successful!",
+                type: .success,
+                onTap: {
+                  // e.g., open the folder or present a modal
+                  print("Notification tapped!")
+                }
+              )
+            )
+            return
+          }
 
-      guard let responseData = responseData else {
-        print("❌ No data received from server")
-        return
-      }
+          guard let responseData = responseData else {
+            print("❌ No data received from server")
+            NotificationManager.shared.show(
+              AppNotification(
+                message: "❌ Upload failed: No response from server.",
+                type: .error,
+                onTap: nil
+              )
+            )
+            return
+          }
 
-      let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-      let zipURL = documents.appendingPathComponent("processed_result.zip")
+          let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+          let zipURL = documents.appendingPathComponent("processed_result.zip")
 
-      do {
-        try responseData.write(to: zipURL)
-        print("✅ ZIP saved at: \(zipURL.path)")
+          do {
+            try responseData.write(to: zipURL)
+            print("✅ ZIP saved at: \(zipURL.path)")
 
-        let unzipDestination = documents.appendingPathComponent("AlgoResult")
-        self.unzipFile(at: zipURL, to: unzipDestination)
+            let unzipDestination = documents.appendingPathComponent("AlgoResult")
+            self.unzipFile(at: zipURL, to: unzipDestination)
 
-        // Unzip using Foundation Archive
-        guard let archive = Archive(url: zipURL, accessMode: .read) else {
-          print("❌ Could not open ZIP archive")
-          return
+            guard let archive = Archive(url: zipURL, accessMode: .read) else {
+              print("❌ Could not open ZIP archive")
+              NotificationManager.shared.show(
+                AppNotification(
+                  message: "❌ Failed to open ZIP archive.",
+                  type: .error,
+                  onTap: nil
+                )
+              )
+              return
+            }
+
+            for entry in archive {
+              let outputURL = unzipDestination.appendingPathComponent(entry.path)
+              _ = try archive.extract(entry, to: outputURL)
+              print("✅ Extracted: \(entry.path)")
+            }
+
+            print("✅ All files extracted to: \(unzipDestination.path)")
+
+            NotificationManager.shared.show(
+              AppNotification(
+                message: "✅ Upload & extraction successful!",
+                type: .success,
+                onTap: nil
+              )
+            )
+
+          } catch {
+            print("❌ Error saving or unzipping ZIP: \(error)")
+            NotificationManager.shared.show(
+              AppNotification(
+                message: "❌ Upload failed: \(error.localizedDescription)",
+                type: .error,
+                onTap: nil
+              )
+            )
+          }
         }
 
-        for entry in archive {
-          let outputURL = unzipDestination.appendingPathComponent(entry.path)
-          _ = try archive.extract(entry, to: outputURL)
-          print("✅ Extracted: \(entry.path)")
-        }
+        DispatchQueue.main.async(execute: mainWork)
+      })
 
-        print("✅ All files extracted to: \(unzipDestination.path)")
-
-      } catch {
-        print("❌ Error saving or unzipping ZIP: \(error)")
-      }
-    }
-
-    task.resume()
   }
 
   func exportInventoryToZip(inventory: Inventory) -> URL? {
@@ -202,5 +250,4 @@ struct ZIPLoaders {
       return nil
     }
   }
-
 }

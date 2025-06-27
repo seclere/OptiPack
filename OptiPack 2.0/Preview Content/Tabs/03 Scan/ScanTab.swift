@@ -14,6 +14,7 @@ struct ARViewContainer: UIViewControllerRepresentable {
 }
 
 struct ScanTab: View {
+  @EnvironmentObject var notificationManager: NotificationManager
   var body: some View {
     ARViewContainer()
       .edgesIgnoringSafeArea(.all)

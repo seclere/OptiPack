@@ -25,6 +25,7 @@ extension UTType {
 struct OptimizationTab: View {
 
   @EnvironmentObject var authManager: AuthManager
+  @EnvironmentObject var notificationManager: NotificationManager
 
   @State private var containerWidth = ""
   @State private var containerHeight = ""
